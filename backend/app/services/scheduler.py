@@ -13,6 +13,7 @@ from app.models.diff_record import DiffRecord
 from app.models.check_log import CheckLog
 from app.services.scraper import ScraperService
 from app.services.diff_engine import DiffEngine
+from app.services.telegram_service import telegram_service
 
 logger = logging.getLogger(__name__)
 
@@ -153,6 +154,9 @@ class SchedulerService:
             response_ms = None
             error_msg = None
 
+            created_snapshot: Optional[Snapshot] = None
+            created_diff: Optional[DiffRecord] = None
+
             try:
                 # 1. Fetch page
                 html, http_status, response_ms = await ScraperService.fetch_page(monitor.url)
@@ -228,6 +232,9 @@ class SchedulerService:
                         )
                         session.add(diff_record)
 
+                        created_snapshot = new_snapshot
+                        created_diff = diff_record
+
                         monitor.total_changes += 1
                         monitor.has_unread_change = True
                         monitor.last_status = "changed"
@@ -261,6 +268,17 @@ class SchedulerService:
             monitor.last_checked_at = now
             monitor.next_check_at = self.compute_next_run(monitor.id)
             await session.commit()
+
+            # 5. Trigger Telegram notifications if changes detected
+            if status_result == "success_changed" and created_snapshot and created_diff:
+                try:
+                    await telegram_service.send_change_notification(
+                        monitor=monitor,
+                        snapshot=created_snapshot,
+                        diff_record=created_diff
+                    )
+                except Exception as t_err:
+                    logger.error(f"Erro ao disparar notificações do Telegram para o monitor {monitor.id}: {t_err}")
 
             return {
                 "monitor_id": monitor.id,

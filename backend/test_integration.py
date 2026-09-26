@@ -6,6 +6,8 @@ from app.main import app
 from app.core.database import init_db
 from app.services.scheduler import scheduler_service
 from app.services.scraper import ScraperService
+from app.services.telegram_service import TelegramService
+
 
 MOCK_HTML_V1 = """
 <!DOCTYPE html>
@@ -112,7 +114,81 @@ async def run_integration_tests():
             assert res_ack.json()["monitor"]["has_unread_change"] is False
             print("[*] Confirmação de visualização limpa o alerta com sucesso!")
 
-        # 8. Clean up
+        # 8. Test Telegram Bot endpoints & Notification dispatch
+        mock_bot_info = {"id": 123456789, "is_bot": True, "first_name": "Observability Test Bot", "username": "ObsTestBot"}
+        mock_updates = [
+            {"chat_id": "987654321", "title_or_name": "Usuário Teste", "type": "private", "username": "@userteste", "last_message": "/start"}
+        ]
+        
+        with patch.object(TelegramService, "get_me", return_value=mock_bot_info), \
+             patch.object(TelegramService, "get_recent_chats", return_value=mock_updates), \
+             patch.object(TelegramService, "send_message", return_value={"message_id": 1, "text": "Ok"}):
+            
+            # Detect Chat
+            res_detect = await client.post("/api/telegram/detect-chat", json={"bot_token": "123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ"})
+            assert res_detect.status_code == 200, f"Detect chat falhou: {res_detect.text}"
+            assert res_detect.json()["chats"][0]["chat_id"] == "987654321"
+            print(f"[*] Detecção de Chat ID Telegram OK -> Chat ID: {res_detect.json()['chats'][0]['chat_id']}")
+
+            # Test connection before save
+            res_test_conn = await client.post("/api/telegram/test", json={
+                "bot_token": "123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ",
+                "chat_id": "987654321"
+            })
+            assert res_test_conn.status_code == 200, f"Test connection falhou: {res_test_conn.text}"
+            print("[*] Teste de conexão prévio do Telegram OK")
+
+            # Create Bot
+            res_bot = await client.post("/api/telegram/bots", json={
+                "name": "Bot de Testes Telegram",
+                "bot_token": "123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ",
+                "chat_id": "987654321",
+                "is_active": True,
+                "send_on_change": True
+            })
+            assert res_bot.status_code == 200, f"Create bot falhou: {res_bot.text}"
+            bot_data = res_bot.json()
+            bot_id = bot_data["id"]
+            assert bot_data["masked_token"].startswith("12345678...")
+            print(f"[*] Bot do Telegram criado com sucesso! ID={bot_id}, Token Mascarado={bot_data['masked_token']}")
+
+            # List Bots
+            res_list_bots = await client.get("/api/telegram/bots")
+            assert res_list_bots.status_code == 200
+            assert len(res_list_bots.json()) >= 1
+            print(f"[*] Listagem de bots OK -> {len(res_list_bots.json())} bot(s) cadastrado(s)")
+
+            # Test Existing Bot
+            res_bot_test = await client.post(f"/api/telegram/bots/{bot_id}/test")
+            assert res_bot_test.status_code == 200
+            print("[*] Teste de envio com bot salvo OK")
+
+            # Create another monitor with initial V1 to test automatic notification dispatch on change!
+            with patch.object(ScraperService, "fetch_page", return_value=(MOCK_HTML_V1, 200, 100)):
+                res_m2 = await client.post("/api/monitors", json={
+                    "name": "Monitor de Editais Notificado",
+                    "url": "https://concurso.gov.br/editais",
+                    "schedule_type": "interval",
+                    "schedule_config": {"interval_hours": 2}
+                })
+                m2_id = res_m2.json()["id"]
+
+            with patch.object(TelegramService, "send_change_notification", wraps=TelegramService.send_change_notification) as spy_notify:
+                # Trigger change on m2 with V2
+                with patch.object(ScraperService, "fetch_page", return_value=(MOCK_HTML_V2, 200, 100)):
+                    res_m2_check = await client.post(f"/api/monitors/{m2_id}/check-now")
+                    assert res_m2_check.status_code == 200
+                    assert res_m2_check.json()["result"]["status"] == "success_changed"
+                    assert spy_notify.called, "TelegramService.send_change_notification deveria ter sido chamado na detecção de mudança!"
+                    print("[*] Disparo automático de notificação Telegram ao detectar mudança OK!")
+
+
+            # Cleanup m2 and bot
+            await client.delete(f"/api/monitors/{m2_id}")
+            await client.delete(f"/api/telegram/bots/{bot_id}")
+            print("[*] Limpeza dos registros de teste do Telegram OK")
+
+        # 9. Clean up original monitor
         await client.delete(f"/api/monitors/{monitor_id}")
 
     scheduler_service.shutdown()
@@ -120,3 +196,4 @@ async def run_integration_tests():
 
 if __name__ == "__main__":
     asyncio.run(run_integration_tests())
+

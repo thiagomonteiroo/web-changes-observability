@@ -33,6 +33,7 @@ export default function DashboardPage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [checkingIds, setCheckingIds] = useState<Set<number>>(new Set());
   const [acknowledgingId, setAcknowledgingId] = useState<number | null>(null);
+  const [telegramActiveCount, setTelegramActiveCount] = useState<number>(0);
 
   // Modals state
   const [isAddEditOpen, setIsAddEditOpen] = useState(false);
@@ -41,12 +42,14 @@ export default function DashboardPage() {
 
   const loadData = useCallback(async () => {
     try {
-      const [statsData, monitorsData] = await Promise.all([
+      const [statsData, monitorsData, botsData] = await Promise.all([
         api.getStats(),
         api.getMonitors(),
+        api.getTelegramBots().catch(() => []),
       ]);
       setStats(statsData);
       setMonitors(monitorsData);
+      setTelegramActiveCount(botsData.filter((b) => b.is_active).length);
     } catch (err) {
       console.error("Falha ao carregar dados:", err);
     } finally {
@@ -54,6 +57,7 @@ export default function DashboardPage() {
       setIsRefreshing(false);
     }
   }, []);
+
 
   useEffect(() => {
     loadData();
@@ -135,7 +139,9 @@ export default function DashboardPage() {
         onOpenAddModal={handleOpenAddModal}
         unreadCount={stats.monitors_with_unread_changes}
         errorCount={stats.monitors_with_errors}
+        telegramBotCount={telegramActiveCount}
       />
+
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* KPI Metrics Cards */}

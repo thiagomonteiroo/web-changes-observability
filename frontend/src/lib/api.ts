@@ -1,4 +1,14 @@
-import { Monitor, MonitorStats, DiffRecord, CheckLog, TestUrlResult } from "./types";
+import {
+  Monitor,
+  MonitorStats,
+  DiffRecord,
+  CheckLog,
+  TestUrlResult,
+  TelegramBot,
+  TelegramTestResponse,
+  TelegramDetectChatResponse,
+} from "./types";
+
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api";
 
@@ -106,4 +116,61 @@ export const api = {
     ),
 
   getErrors: (limit = 50) => fetchJson<CheckLog[]>(`/errors?limit=${limit}`),
+
+  // Telegram Bots
+  getTelegramBots: () => fetchJson<TelegramBot[]>("/telegram/bots"),
+
+  getTelegramBot: (id: number) => fetchJson<TelegramBot>(`/telegram/bots/${id}`),
+
+  createTelegramBot: (data: {
+    name: string;
+    bot_token: string;
+    chat_id: string;
+    is_active?: boolean;
+    send_on_change?: boolean;
+    send_on_error?: boolean;
+  }) =>
+    fetchJson<TelegramBot>("/telegram/bots", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  updateTelegramBot: (
+    id: number,
+    data: {
+      name?: string;
+      bot_token?: string;
+      chat_id?: string;
+      is_active?: boolean;
+      send_on_change?: boolean;
+      send_on_error?: boolean;
+    }
+  ) =>
+    fetchJson<TelegramBot>(`/telegram/bots/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  deleteTelegramBot: (id: number) =>
+    fetchJson<{ message: string; id: number }>(`/telegram/bots/${id}`, {
+      method: "DELETE",
+    }),
+
+  testTelegramBot: (bot_token: string, chat_id: string) =>
+    fetchJson<TelegramTestResponse>("/telegram/test", {
+      method: "POST",
+      body: JSON.stringify({ bot_token, chat_id }),
+    }),
+
+  testExistingTelegramBot: (bot_id: number) =>
+    fetchJson<TelegramTestResponse>(`/telegram/bots/${bot_id}/test`, {
+      method: "POST",
+    }),
+
+  detectTelegramChat: (bot_token: string) =>
+    fetchJson<TelegramDetectChatResponse>("/telegram/detect-chat", {
+      method: "POST",
+      body: JSON.stringify({ bot_token }),
+    }),
 };
+

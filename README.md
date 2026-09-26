@@ -39,7 +39,13 @@ Histórico de alterações com detecção automática de novos arquivos (`.pdf`,
 - **Rastreamento de Editais e Documentos Anexos**:
   - Detecta automaticamente a inclusão ou remoção de arquivos `.pdf`, `.docx`, `.doc`, `.xlsx` e editais.
   - Disponibiliza botões de download direto para as novas publicações encontradas.
+- **Notificações Instantâneas via Telegram Bot (BotFather)**:
+  - Disparo automático de alertas no Telegram para usuários, grupos ou canais sempre que uma alteração ocorrer.
+  - Mensagens ricas contendo resumo das linhas alteradas e links diretos para download de novos documentos e editais.
+  - Detecção com 1 clique de `chat_id` via `getUpdates` e teste de envio de notificação em tempo real.
+  - Menu e painel dedicado no Dashboard (`/telegram`) com guia passo a passo do `@BotFather`.
 - **Central de Alertas com Seção de Destaque**:
+
   - Painel com seção dedicada no topo para páginas que sofreram alterações recentes.
   - Ação de **"Confirmar Visualização / Marcar como Visto"** para atestar ciência e limpar o alerta.
 - **Histórico Completo & Visualizador de Diffs**:

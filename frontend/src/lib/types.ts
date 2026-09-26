@@ -70,3 +70,44 @@ export interface TestUrlResult {
   sample_links?: ExtractedLink[];
   error?: string;
 }
+
+export interface TelegramBot {
+  id: number;
+  name: string;
+  bot_token: string;
+  masked_token: string;
+  chat_id: string;
+  is_active: boolean;
+  send_on_change: boolean;
+  send_on_error: boolean;
+  last_test_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TelegramDetectedChat {
+  chat_id: string;
+  title_or_name: string;
+  type: string;
+  username: string | null;
+  last_message: string | null;
+}
+
+export interface TelegramDetectChatResponse {
+  success: boolean;
+  bot_username: string | null;
+  chats: TelegramDetectedChat[];
+  message: string | null;
+}
+
+export interface TelegramTestResponse {
+  success: boolean;
+  message: string;
+  bot_info?: {
+    id: number;
+    is_bot: boolean;
+    first_name: string;
+    username: string;
+  };
+}
+

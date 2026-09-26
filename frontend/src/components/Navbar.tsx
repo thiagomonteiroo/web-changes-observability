@@ -2,15 +2,23 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Activity, Plus, AlertTriangle, BellRing } from "lucide-react";
+import { Activity, Plus, AlertTriangle, BellRing, Send } from "lucide-react";
+
 
 interface NavbarProps {
   onOpenAddModal: () => void;
   unreadCount?: number;
   errorCount?: number;
+  telegramBotCount?: number;
 }
 
-export function Navbar({ onOpenAddModal, unreadCount = 0, errorCount = 0 }: NavbarProps) {
+export function Navbar({
+  onOpenAddModal,
+  unreadCount = 0,
+  errorCount = 0,
+  telegramBotCount,
+}: NavbarProps) {
+
   const pathname = usePathname();
 
   return (
@@ -78,6 +86,24 @@ export function Navbar({ onOpenAddModal, unreadCount = 0, errorCount = 0 }: Navb
                 </span>
               )}
             </Link>
+
+            <Link
+              href="/telegram"
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                pathname === "/telegram"
+                  ? "bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 font-semibold border border-blue-200/50 dark:border-blue-800/50"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+              }`}
+            >
+              <Send className="w-4 h-4 text-sky-500 dark:text-sky-400" />
+              <span>Bots Telegram</span>
+              {telegramBotCount !== undefined && telegramBotCount > 0 && (
+                <span className="px-1.5 py-0.2 text-[10px] rounded-full bg-sky-500 text-white font-bold">
+                  {telegramBotCount}
+                </span>
+              )}
+            </Link>
+
           </nav>
         </div>
 
